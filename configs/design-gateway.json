@@ -1,0 +1,90 @@
+{
+  "$schema": "../schema/config.json",
+
+  "_comment": [
+    "MiNA Design Gateway configuration.",
+    "Copy to ~/.openclaw/config.json (or pass --config) when running the design gateway.",
+    "Replace <MINA_ENDPOINT>, <HOOK_TOKEN>, and <FIGMA_TOKEN> with real values."
+  ],
+
+  "defaultAgent": "mina",
+
+  "agents": {
+    "mina": {
+      "model": "mina/design-expert",
+      "instructions": [
+        "You are the MiNA design gateway executor. You receive design tasks from the MiNA orchestrator",
+        "and carry them out using the design tools available to you.",
+        "",
+        "Available design tools:",
+        "  Pencil.dev  — pencil_* tools for creating/editing .pen design files",
+        "  Figma       — figma_* tools for reading Figma files, exporting renders, posting comments",
+        "  Browser     — browser_* tools for driving Figma web, Illustrator web, or any web design tool",
+        "",
+        "Workflow:",
+        "1. Receive a design task from MiNA via the /hooks/agent endpoint",
+        "2. Use pencil_editor_state or figma_get_file to understand current state",
+        "3. Execute the design operations using the appropriate tool(s)",
+        "4. Validate with pencil_screenshot or figma_get_images",
+        "5. Return a structured JSON result summarising what was done"
+      ]
+    }
+  },
+
+  "models": {
+    "default": "mina/design-expert",
+    "providers": {
+      "mina": {
+        "baseUrl": "<MINA_ENDPOINT>",
+        "api": "openai",
+        "apiKey": "",
+        "models": [
+          { "id": "mina/design-expert",   "label": "MiNA · Design Expert" },
+          { "id": "mina/code-expert",     "label": "MiNA · Code Expert" },
+          { "id": "mina/ux-researcher",   "label": "MiNA · UX Researcher" },
+          { "id": "mina/asset-generator", "label": "MiNA · Asset Generator" }
+        ]
+      }
+    }
+  },
+
+  "hooks": {
+    "enabled": true,
+    "token": "<HOOK_TOKEN>",
+    "path": "/hooks",
+    "allowRequestSessionKey": true,
+    "allowedSessionKeyPrefixes": ["hook:", "design:"],
+    "defaultSessionKey": "design:default"
+  },
+
+  "gateway": {
+    "port": 18790,
+    "bind": "loopback",
+    "mode": "local"
+  },
+
+  "plugins": {
+    "figma-tool": {
+      "token": "<FIGMA_TOKEN>"
+    },
+    "pencil-tool": {
+      "mcpCommand": "pencil",
+      "mcpArgs": ["mcp"]
+    }
+  },
+
+  "extensions": [
+    "@openclaw/mina-provider",
+    "@openclaw/figma-tool",
+    "@openclaw/pencil-tool"
+  ],
+
+  "_disabledChannels": [
+    "discord",
+    "telegram",
+    "signal",
+    "slack",
+    "imessage",
+    "whatsapp"
+  ]
+}

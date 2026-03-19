@@ -1,0 +1,12 @@
+{
+  "name": "@openclaw/figma-tool",
+  "version": "2026.3.19",
+  "private": true,
+  "description": "OpenClaw Figma design tool plugin",
+  "type": "module",
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

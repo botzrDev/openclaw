@@ -1,0 +1,12 @@
+{
+  "name": "@openclaw/pencil-tool",
+  "version": "2026.3.19",
+  "private": true,
+  "description": "OpenClaw Pencil.dev MCP bridge tool plugin",
+  "type": "module",
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}
