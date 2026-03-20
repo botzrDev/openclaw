@@ -57,6 +57,7 @@ import { getBearerToken } from "./http-utils.js";
 import { resolveRequestClientIp } from "./net.js";
 import { handleOpenAiHttpRequest } from "./openai-http.js";
 import { handleOpenResponsesHttpRequest } from "./openresponses-http.js";
+import type { RunResultStore } from "./run-result-store.js";
 import { DEDUPE_MAX, DEDUPE_TTL_MS } from "./server-constants.js";
 import {
   authorizeCanvasRequest,
@@ -81,6 +82,8 @@ const HOOK_AUTH_FAILURE_WINDOW_MS = 60_000;
 type HookDispatchers = {
   dispatchWakeHook: (value: { text: string; mode: "now" | "next-heartbeat" }) => void;
   dispatchAgentHook: (value: HookAgentDispatchPayload) => string;
+  /** Optional — when provided, enables GET /hooks/result/:runId polling endpoint. */
+  getRunResultStore?: () => RunResultStore | null;
 };
 
 export type HookClientIpConfig = Readonly<{
@@ -375,7 +378,14 @@ export function createHooksRequestHandler(
     getClientIpConfig?: () => HookClientIpConfig;
   } & HookDispatchers,
 ): HooksRequestHandler {
-  const { getHooksConfig, logHooks, dispatchAgentHook, dispatchWakeHook, getClientIpConfig } = opts;
+  const {
+    getHooksConfig,
+    logHooks,
+    dispatchAgentHook,
+    dispatchWakeHook,
+    getClientIpConfig,
+    getRunResultStore,
+  } = opts;
   const hookReplayCache = new Map<string, HookReplayEntry>();
   const hookAuthLimiter = createAuthRateLimiter({
     maxAttempts: HOOK_AUTH_FAILURE_LIMIT,
@@ -479,9 +489,42 @@ export function createHooksRequestHandler(
       return true;
     }
 
+    // GET /hooks/result/:runId — polling endpoint for MiNA to retrieve run results.
+    if (req.method === "GET" || req.method === "HEAD") {
+      const resultStore = getRunResultStore?.();
+      if (!resultStore) {
+        sendJson(res, 404, { ok: false, error: "result polling not enabled" });
+        return true;
+      }
+      const token = extractHookToken(req);
+      if (!safeEqualSecret(token, hooksConfig.token)) {
+        sendJson(res, 401, { ok: false, error: "Unauthorized" });
+        return true;
+      }
+      // Expect path: <basePath>/result/<runId>
+      const runIdMatch = url.pathname.match(/\/result\/([^/]+)$/);
+      if (!runIdMatch || !runIdMatch[1]) {
+        sendJson(res, 404, { ok: false, error: "Not Found" });
+        return true;
+      }
+      const runId = runIdMatch[1];
+      const result = resultStore.get(runId);
+      if (!result) {
+        sendJson(res, 404, { ok: false, error: "run not found" });
+        return true;
+      }
+      if (req.method === "HEAD") {
+        res.statusCode = 200;
+        res.end();
+        return true;
+      }
+      sendJson(res, 200, { ok: true, runId, ...result });
+      return true;
+    }
+
     if (req.method !== "POST") {
       res.statusCode = 405;
-      res.setHeader("Allow", "POST");
+      res.setHeader("Allow", "GET, HEAD, POST");
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
       res.end("Method Not Allowed");
       return true;

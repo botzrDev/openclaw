@@ -12,6 +12,7 @@ import {
   type HookAgentDispatchPayload,
   type HooksConfigResolved,
 } from "../hooks.js";
+import { RunResultStore } from "../run-result-store.js";
 import { createHooksRequestHandler, type HookClientIpConfig } from "../server-http.js";
 
 type SubsystemLogger = ReturnType<typeof createSubsystemLogger>;
@@ -30,8 +31,11 @@ export function createGatewayHooksRequestHandler(params: {
   bindHost: string;
   port: number;
   logHooks: SubsystemLogger;
+  /** Optional result store. When provided, callers can poll GET /hooks/result/:runId. */
+  runResultStore?: RunResultStore;
 }) {
-  const { deps, getHooksConfig, getClientIpConfig, bindHost, port, logHooks } = params;
+  const { deps, getHooksConfig, getClientIpConfig, bindHost, port, logHooks, runResultStore } =
+    params;
 
   const dispatchWakeHook = (value: { text: string; mode: "now" | "next-heartbeat" }) => {
     const sessionKey = resolveMainSessionKeyFromConfig();
@@ -74,6 +78,9 @@ export function createGatewayHooksRequestHandler(params: {
     };
 
     const runId = randomUUID();
+    // Mark pending immediately so pollers see the run before it completes.
+    runResultStore?.setPending(runId);
+
     void (async () => {
       try {
         const cfg = loadConfig();
@@ -97,6 +104,12 @@ export function createGatewayHooksRequestHandler(params: {
             requestHeartbeatNow({ reason: `hook:${jobId}` });
           }
         }
+        // Persist result so MiNA can poll GET /hooks/result/:runId.
+        if (result.status === "ok") {
+          runResultStore?.setOk(runId, result.outputText ?? summary ?? "", result.summary?.trim());
+        } else {
+          runResultStore?.setError(runId, result.error?.trim() || result.status);
+        }
       } catch (err) {
         logHooks.warn(`hook agent failed: ${String(err)}`);
         enqueueSystemEvent(`Hook ${value.name} (error): ${String(err)}`, {
@@ -105,6 +118,7 @@ export function createGatewayHooksRequestHandler(params: {
         if (value.wakeMode === "now") {
           requestHeartbeatNow({ reason: `hook:${jobId}:error` });
         }
+        runResultStore?.setError(runId, String(err));
       }
     })();
 
@@ -119,5 +133,6 @@ export function createGatewayHooksRequestHandler(params: {
     getClientIpConfig,
     dispatchAgentHook,
     dispatchWakeHook,
+    getRunResultStore: runResultStore ? () => runResultStore : undefined,
   });
 }

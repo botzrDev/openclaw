@@ -17,6 +17,7 @@ import type { ChatAbortControllerEntry } from "./chat-abort.js";
 import type { ControlUiRootState } from "./control-ui.js";
 import type { HooksConfigResolved } from "./hooks.js";
 import { isLoopbackHost, resolveGatewayListenHosts } from "./net.js";
+import { RunResultStore } from "./run-result-store.js";
 import {
   createGatewayBroadcaster,
   type GatewayBroadcastFn,
@@ -123,6 +124,8 @@ export async function createGatewayRuntimeState(params: {
     const clients = new Set<GatewayWsClient>();
     const { broadcast, broadcastToConnIds } = createGatewayBroadcaster({ clients });
 
+    // Shared result store — persists hook run results for GET /hooks/result/:runId polling.
+    const runResultStore = new RunResultStore();
     const handleHooksRequest = createGatewayHooksRequestHandler({
       deps: params.deps,
       getHooksConfig: params.hooksConfig,
@@ -130,6 +133,7 @@ export async function createGatewayRuntimeState(params: {
       bindHost: params.bindHost,
       port: params.port,
       logHooks: params.logHooks,
+      runResultStore,
     });
 
     const handlePluginRequest = createGatewayPluginRequestHandler({
