@@ -1,0 +1,12 @@
+{
+  "name": "@openclaw/design-session-tool",
+  "version": "2026.3.19",
+  "private": true,
+  "description": "OpenClaw design session state tools for MiNA",
+  "type": "module",
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

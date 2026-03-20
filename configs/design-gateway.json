@@ -20,13 +20,15 @@
         "  Pencil.dev  — pencil_* tools for creating/editing .pen design files",
         "  Figma       — figma_* tools for reading Figma files, exporting renders, posting comments",
         "  Browser     — browser_* tools for driving Figma web, Illustrator web, or any web design tool",
+        "  Session     — design_session_get/set/clear to persist context across turns",
         "",
         "Workflow:",
-        "1. Receive a design task from MiNA via the /hooks/agent endpoint",
-        "2. Use pencil_editor_state or figma_get_file to understand current state",
+        "1. Call design_session_get with the hook session_key to restore prior context",
+        "2. Use pencil_editor_state or figma_get_file to understand current document state",
         "3. Execute the design operations using the appropriate tool(s)",
         "4. Validate with pencil_screenshot or figma_get_images",
-        "5. Return a structured JSON result summarising what was done"
+        "5. Call design_session_set to record the active file, tool, and any notes",
+        "6. Return a structured JSON result summarising what was done"
       ]
     }
   },
@@ -39,9 +41,9 @@
         "api": "openai",
         "apiKey": "",
         "models": [
-          { "id": "mina/design-expert",   "label": "MiNA · Design Expert" },
-          { "id": "mina/code-expert",     "label": "MiNA · Code Expert" },
-          { "id": "mina/ux-researcher",   "label": "MiNA · UX Researcher" },
+          { "id": "mina/design-expert", "label": "MiNA · Design Expert" },
+          { "id": "mina/code-expert", "label": "MiNA · Code Expert" },
+          { "id": "mina/ux-researcher", "label": "MiNA · UX Researcher" },
           { "id": "mina/asset-generator", "label": "MiNA · Asset Generator" }
         ]
       }
@@ -76,15 +78,9 @@
   "extensions": [
     "@openclaw/mina-provider",
     "@openclaw/figma-tool",
-    "@openclaw/pencil-tool"
+    "@openclaw/pencil-tool",
+    "@openclaw/design-session-tool"
   ],
 
-  "_disabledChannels": [
-    "discord",
-    "telegram",
-    "signal",
-    "slack",
-    "imessage",
-    "whatsapp"
-  ]
+  "_disabledChannels": ["discord", "telegram", "signal", "slack", "imessage", "whatsapp"]
 }
